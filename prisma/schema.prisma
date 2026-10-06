@@ -1,0 +1,496 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  PRINCIPAL
+  HOD
+  FACULTY
+  MODULE_OFFICER
+  STUDENT
+  PARENT
+  ALUMNI
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AdmissionStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PROVISIONAL
+}
+
+enum FeeStatus {
+  PAID
+  PARTIAL
+  PENDING
+  OVERDUE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum CertificateType {
+  BONAFIDE
+  TRANSFER
+  LEAVING
+  CHARACTER
+  NO_DUES
+}
+
+enum CertificateStatus {
+  REQUESTED
+  VERIFYING
+  APPROVED
+  REJECTED
+  ISSUED
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  SELECTED
+  REJECTED
+}
+
+enum BookStatus {
+  AVAILABLE
+  ISSUED
+  RESERVED
+  LOST
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  role          Role           @default(STUDENT)
+  avatarUrl     String?
+  phone         String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  student       Student?
+  faculty       Faculty?
+  parent        Parent?
+  alumni        Alumni?
+  notifications Notification[]
+  auditLogs     AuditLog[]
+}
+
+model Department {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  description String?
+  hodName     String?
+  intake      Int       @default(60)
+  createdAt   DateTime  @default(now())
+
+  courses     Course[]
+  faculty     Faculty[]
+  students    Student[]
+}
+
+model Course {
+  id           String     @id @default(uuid())
+  code         String     @unique
+  name         String
+  degree       String
+  durationYear Int        @default(4)
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  students     Student[]
+  subjects     Subject[]
+}
+
+model Subject {
+  id          String       @id @default(uuid())
+  code        String       @unique
+  name        String
+  credits     Int          @default(4)
+  semester    Int
+  courseId    String
+  course      Course       @relation(fields: [courseId], references: [id])
+  facultyId   String?
+  faculty     Faculty?     @relation(fields: [facultyId], references: [id])
+  attendance  Attendance[]
+  assignments Assignment[]
+  results     Result[]
+}
+
+model Student {
+  id             String           @id @default(uuid())
+  userId         String           @unique
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollmentNo   String           @unique
+  rollNo         String
+  departmentId   String
+  department     Department       @relation(fields: [departmentId], references: [id])
+  courseId       String
+  course         Course           @relation(fields: [courseId], references: [id])
+  currentYear    Int              @default(1)
+  semester       Int              @default(1)
+  division       String           @default("A")
+  dateOfBirth    DateTime
+  bloodGroup     String?
+  address        String?
+  guardianName   String?
+  guardianPhone  String?
+  parentId       String?
+  parent         Parent?          @relation(fields: [parentId], references: [id])
+  
+  attendance     Attendance[]
+  submissions    Submission[]
+  results        Result[]
+  fees           Fee[]
+  certificates   Certificate[]
+  applications   JobApplication[]
+  libraryCards   LibraryIssue[]
+}
+
+model Parent {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occupation  String?
+  relation    String    @default("Guardian")
+  students    Student[]
+}
+
+model Faculty {
+  id             String       @id @default(uuid())
+  userId         String       @unique
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeId     String       @unique
+  designation    String
+  qualification  String
+  specialization String?
+  joiningDate    DateTime     @default(now())
+  departmentId   String
+  department     Department   @relation(fields: [departmentId], references: [id])
+  subjects       Subject[]
+  assignments    Assignment[]
+}
+
+model Alumni {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passingYear    Int
+  currentCompany String?
+  designation    String?
+  linkedInUrl    String?
+  willingToMentor Boolean @default(true)
+}
+
+model Attendance {
+  id         String           @id @default(uuid())
+  date       DateTime
+  status     AttendanceStatus @default(PRESENT)
+  studentId  String
+  student    Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId  String
+  subject    Subject          @relation(fields: [subjectId], references: [id])
+}
+
+model TimetableSlot {
+  id        String   @id @default(uuid())
+  dayOfWeek String
+  startTime String
+  endTime   String
+  room      String
+  subject   String
+  faculty   String
+  division  String
+}
+
+model Assignment {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  deadline    DateTime
+  totalMarks  Int          @default(100)
+  subjectId   String
+  subject     Subject      @relation(fields: [subjectId], references: [id])
+  facultyId   String
+  faculty     Faculty      @relation(fields: [facultyId], references: [id])
+  fileUrl     String?
+  submissions Submission[]
+}
+
+model Submission {
+  id           String     @id @default(uuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  submittedAt  DateTime   @default(now())
+  fileUrl      String
+  obtainedMarks Int?
+  remarks      String?
+}
+
+model Examination {
+  id          String   @id @default(uuid())
+  title       String
+  examType    String
+  semester    Int
+  startDate   DateTime
+  endDate     DateTime
+  academicYear String
+}
+
+model Result {
+  id            String   @id @default(uuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId     String
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  internalMarks Int      @default(0)
+  externalMarks Int      @default(0)
+  totalMarks    Int      @default(0)
+  grade         String
+  sgpa          Float
+  cgpa          Float
+  semester      Int
+}
+
+model Fee {
+  id          String    @id @default(uuid())
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYear String
+  totalAmount Float
+  paidAmount  Float     @default(0)
+  status      FeeStatus @default(PENDING)
+  dueDate     DateTime
+  payments    Payment[]
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  feeId         String
+  fee           Fee      @relation(fields: [feeId], references: [id])
+  amount        Float
+  transactionId String   @unique
+  method        String
+  paymentDate   DateTime @default(now())
+  receiptNo     String   @unique
+}
+
+model AdmissionApplication {
+  id             String          @id @default(uuid())
+  applicationNo  String          @unique
+  fullName       String
+  email          String
+  phone          String
+  courseApplied  String
+  previousSchool String
+  percentage     Float
+  category       String
+  status         AdmissionStatus @default(SUBMITTED)
+  submittedAt    DateTime        @default(now())
+  documentsUrl   String?
+  adminNotes     String?
+}
+
+model Notice {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  category    String
+  targetRole  String   @default("ALL")
+  isUrgent    Boolean  @default(false)
+  isPublished Boolean  @default(true)
+  attachmentUrl String?
+  publishedAt DateTime @default(now())
+}
+
+model Event {
+  id           String              @id @default(uuid())
+  title        String
+  description  String
+  category     String
+  venue        String
+  eventDate    DateTime
+  capacity     Int                 @default(200)
+  bannerUrl    String?
+  registrations EventRegistration[]
+}
+
+model EventRegistration {
+  id           String   @id @default(uuid())
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id])
+  userName     String
+  userEmail    String
+  userRole     String
+  registeredAt DateTime @default(now())
+}
+
+model News {
+  id          String   @id @default(uuid())
+  title       String
+  summary     String
+  content     String
+  coverUrl    String?
+  category    String
+  publishedAt DateTime @default(now())
+}
+
+model GalleryItem {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  imageUrl    String
+  caption     String?
+  createdAt   DateTime @default(now())
+}
+
+model Certificate {
+  id                String            @id @default(uuid())
+  certificateNo     String?           @unique
+  studentId         String
+  student           Student           @relation(fields: [studentId], references: [id])
+  type              CertificateType
+  purpose           String
+  status            CertificateStatus @default(REQUESTED)
+  verificationToken String            @unique @default(uuid())
+  issuedAt          DateTime?
+  requestedAt       DateTime          @default(now())
+}
+
+model PlacementCompany {
+  id          String   @id @default(uuid())
+  name        String
+  logoUrl     String?
+  website     String?
+  packageOffered String
+  rolesOffered String
+  visitingDate DateTime
+  jobs        Job[]
+}
+
+model Job {
+  id           String           @id @default(uuid())
+  companyId    String
+  company      PlacementCompany @relation(fields: [companyId], references: [id])
+  title        String
+  ctc          String
+  location     String
+  minCgpa      Float            @default(6.5)
+  eligibleBranches String
+  deadline     DateTime
+  applications JobApplication[]
+}
+
+model JobApplication {
+  id          String            @id @default(uuid())
+  jobId       String
+  job         Job               @relation(fields: [jobId], references: [id])
+  studentId   String
+  student     Student           @relation(fields: [studentId], references: [id])
+  status      ApplicationStatus @default(APPLIED)
+  appliedAt   DateTime          @default(now())
+}
+
+model LibraryBook {
+  id          String         @id @default(uuid())
+  isbn        String         @unique
+  title       String
+  author      String
+  publisher   String
+  edition     String?
+  category    String
+  totalCopies Int            @default(5)
+  available   Int            @default(5)
+  issues      LibraryIssue[]
+}
+
+model LibraryIssue {
+  id         String      @id @default(uuid())
+  bookId     String
+  book       LibraryBook @relation(fields: [bookId], references: [id])
+  studentId  String
+  student    Student     @relation(fields: [studentId], references: [id])
+  issueDate  DateTime    @default(now())
+  dueDate    DateTime
+  returnDate DateTime?
+  fineAmount Float       @default(0)
+}
+
+model Complaint {
+  id          String          @id @default(uuid())
+  ticketNo    String          @unique
+  title       String
+  description String
+  category    String
+  submittedBy String
+  submitterEmail String
+  assignedTo  String?
+  status      ComplaintStatus @default(OPEN)
+  resolution  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Feedback {
+  id          String   @id @default(uuid())
+  category    String
+  subject     String
+  rating      Int
+  comments    String
+  submittedBy String
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  linkUrl   String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  userName   String
+  role       String
+  action     String
+  module     String
+  details    String
+  ipAddress  String?
+  timestamp  DateTime @default(now())
+}

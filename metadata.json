@@ -1,0 +1,8 @@
+{
+  "name": "SCSCO Omerga Digital Campus",
+  "description": "Official Enterprise Digital Platform for Bharat Shikshan Sanstha's Shri Chhatrapati Shivaji College, Omerga (Dist. Dharashiv). NAAC 'A' Grade (CGPA 3.14), affiliated to Dr. Babasaheb Ambedkar Marathwada University, Chhatrapati Sambhajinagar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
